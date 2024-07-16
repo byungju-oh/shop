@@ -171,7 +171,7 @@ def add_image():
         db.session.add(new_image)
         db.session.commit()
         flash('Image added successfully!', 'success')
-        return redirect(url_for('it.html'))
+        return redirect(url_for('main.fashion'))
     return render_template('adi.html', form=form)
 
 @main.route('/delete_image/<int:image_id>', methods=['POST'])
@@ -182,4 +182,4 @@ def delete_image(image_id):
     db.session.delete(image)
     db.session.commit()
     flash('Image has been deleted!', 'success')
-    return redirect(url_for('it.html'))
+    return redirect(url_for('main.fashion'))
