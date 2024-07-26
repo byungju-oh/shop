@@ -11,6 +11,7 @@ from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import make_wsgi_app, Gauge, Counter
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from flask_redis import FlaskRedis
+from .celery import make_celery  # Import make_celery
 
 load_dotenv()  # Load .env file
 
@@ -39,6 +40,9 @@ def create_app():
     bcrypt.init_app(app)
     login_manager.init_app(app)
     redis_client = FlaskRedis(app)
+    
+    celery = make_celery(app)
+    app.celery = celery  # Add celery instance to app
     
     # Add Prometheus WSGI middleware to route /metrics requests
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
