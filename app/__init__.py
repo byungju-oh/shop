@@ -11,7 +11,6 @@ from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import make_wsgi_app, Gauge, Counter
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from flask_redis import FlaskRedis
-from celery import Celery
 
 load_dotenv()  # Load .env file
 
@@ -23,18 +22,6 @@ login_manager.login_message_category = 'info'
 
 IN_PROGRESS = Gauge('inprogress_requests', 'Number of requests in progress')
 REQUEST_COUNTER = Counter('http_requests_total', 'Total number of HTTP requests')
-
-def make_celery(app):
-    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'], broker=app.config['CELERY_BROKER_URL'])
-    celery.conf.update(app.config)
-    
-    class ContextTask(celery.Task):
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-    
-    celery.Task = ContextTask
-    return celery
 
 def create_app():
     app = Flask(__name__)
@@ -52,13 +39,6 @@ def create_app():
     bcrypt.init_app(app)
     login_manager.init_app(app)
     redis_client = FlaskRedis(app)
-    celery = make_celery(app)
-    
-    app.celery = celery  # Add celery instance to app
-    
-    from app.routes import main, users
-    app.register_blueprint(main)
-    app.register_blueprint(users)
     
     # Add Prometheus WSGI middleware to route /metrics requests
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
@@ -95,4 +75,10 @@ def create_app():
                 if retries == 0:
                     print("DB connection failed after 5 retries.")
                     raise e
+        
+        # Import and register blueprints inside the app context
+        from app.routes import main, users
+        app.register_blueprint(main)
+        app.register_blueprint(users)
+    
     return app

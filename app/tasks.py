@@ -1,7 +1,8 @@
 from app import create_app
+from app.celery_utils import make_celery
 
 app = create_app()
-celery = app.celery
+celery = make_celery(app)
 
 @celery.task
 def register_user(username, phone_number, password):
