@@ -7,19 +7,14 @@ import os
 import uuid
 from prometheus_client import Summary
 from google.cloud import storage
+from app.tasks import register_user
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="tete-426803-fcea6282bee1.json"
 main = Blueprint('main', __name__)
 users = Blueprint('users', __name__)
 
 
 
-@celery.task
-def register_user(username, phone_number, password):
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    user = User(username=username, phone_number=phone_number, password=hashed_password)
-    db.session.add(user)
-    db.session.commit()
-    return {'status': 'success', 'message': 'User registered successfully'}
+
 def extract_filename(url):
     filename = os.path.basename(url)
     name, ext = os.path.splitext(filename)
