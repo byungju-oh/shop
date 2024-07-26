@@ -55,10 +55,12 @@ def create_app():
     login_manager.init_app(app)
     redis_client = FlaskRedis(app)
     celery = make_celery(app)
+    
+    app.celery = celery  # Add celery instance to app
     from app.routes import main, users
     app.register_blueprint(main)
     app.register_blueprint(users)
-    app.celery = celery  # Add celery instance to app
+    
     # Add Prometheus WSGI middleware to route /metrics requests
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
         '/metrics': make_wsgi_app()
