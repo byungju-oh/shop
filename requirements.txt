@@ -17,3 +17,6 @@ prometheus-flask-exporter==0.18.4
 prometheus_client
 google-cloud-storage
 uuid
+celery
+redis
+flask_redis

@@ -10,6 +10,8 @@ import time
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import start_http_server, Summary, make_wsgi_app,  Gauge, Counter
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from flask_redis import FlaskRedis
+from celery import Celery
 
 load_dotenv()  # .env 파일 로드
 
@@ -21,6 +23,11 @@ login_manager.login_message_category = 'info'
 
 IN_PROGRESS = Gauge('inprogress_requests', 'Number of requests in progress')
 REQUEST_COUNTER = Counter('http_requests_total', 'Total number of HTTP requests')
+def make_celery(app):
+    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'], broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    return celery
+
 
 def create_app():
     app = Flask(__name__)
@@ -31,11 +38,16 @@ def create_app():
     app.config['GCS_BUCKET_NAME'] = os.getenv('GCS_BUCKET_NAME')
     # app.config['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
     
+    app.config['REDIS_URL'] = "redis://redis:6379/0"
+    app.config['CELERY_BROKER_URL'] = 'redis://redis:6379/0'
+    app.config['CELERY_RESULT_BACKEND'] = 'redis://redis:6379/0'
+    
     metrics = PrometheusMetrics(app)
     db.init_app(app)
     bcrypt.init_app(app)
     login_manager.init_app(app)
-
+    redis_client = FlaskRedis(app)
+    celery = make_celery(app)
     from app.routes import main, users
     app.register_blueprint(main)
     app.register_blueprint(users)

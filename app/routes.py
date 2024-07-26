@@ -10,6 +10,16 @@ from google.cloud import storage
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="tete-426803-fcea6282bee1.json"
 main = Blueprint('main', __name__)
 users = Blueprint('users', __name__)
+
+
+
+@celery.task
+def register_user(username, phone_number, password):
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    user = User(username=username, phone_number=phone_number, password=hashed_password)
+    db.session.add(user)
+    db.session.commit()
+    return {'status': 'success', 'message': 'User registered successfully'}
 def extract_filename(url):
     filename = os.path.basename(url)
     name, ext = os.path.splitext(filename)
@@ -87,20 +97,32 @@ def login():
             flash('Login Unsuccessful. Please check username and password', 'danger')
     return render_template('login.html', form=form)
 
+
 @users.route('/register', methods=['GET', 'POST'])
-@REQUEST_TIME.time()
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.home'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, phone_number=form.phone_number.data, password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        flash('Your account has been created! You are now able to log in', 'success')
+        task = register_user.apply_async(args=[form.username.data, form.phone_number.data, form.password.data])
+        flash('Your registration request has been queued', 'info')
         return redirect(url_for('users.login'))
     return render_template('register.html', form=form)
+
+# @users.route('/register', methods=['GET', 'POST'])
+# @REQUEST_TIME.time()
+# def register():
+#     if current_user.is_authenticated:
+#         return redirect(url_for('main.home'))
+#     form = RegistrationForm()
+#     if form.validate_on_submit():
+#         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+#         user = User(username=form.username.data, phone_number=form.phone_number.data, password=hashed_password)
+#         db.session.add(user)
+#         db.session.commit()
+#         flash('Your account has been created! You are now able to log in', 'success')
+#         return redirect(url_for('users.login'))
+#     return render_template('register.html', form=form)
 
 @users.route('/logout')
 @REQUEST_TIME.time()
